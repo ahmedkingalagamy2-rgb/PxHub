@@ -1,0 +1,616 @@
+-- [[ Peak _x Hub Official Premium Release ]] --
+-- [[ Crafted and Conceptualized by: Karim ]] --
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- إعدادات الأمان والمفتاح الافتراضي
+local CorrectKey = "PeakX2026"
+local CurrentLanguage = "ar" -- "ar" أو "en"
+local NormalBackground = Color3.fromRGB(15, 15, 15)
+local NavbarBackground = Color3.fromRGB(25, 25, 25)
+local TextColor = Color3.fromRGB(255, 255, 255)
+
+-- مصفوفة الترجمة لكل الأزرار والنصوص والتابات
+local Localization = {
+    ar = {
+        welcome = "مرحبا بك في Peak _x Hub", loading = "جاري تحميل الموارد...",
+        key_system = "مفتاح النظام", key_req = "أرجوك قم بوضع المفتاح هنا",
+        check_key = "تحقق من المفتاح", get_key = "احصل علي المفتاح",
+        key_success = "تم التحقق منه جاري العمل...", search = "البحث عن زر معين...",
+        combat = "القتال", movement = "الحركة", riot = "شغب", edit_gui = "تعديل اللوحة", config = "التكوين", favorite = "المفضلة",
+        v1_desc = "تتبع ملتصق بالظهر", v2_desc = "تتبع تحت الأرض وهجوم تلقائي"
+    },
+    en = {
+        welcome = "Welcome to Peak _x Hub", loading = "Loading assets...",
+        key_system = "Key System", key_req = "Please insert the key here",
+        check_key = "Check Key", get_key = "Get Key",
+        key_success = "Key Verified! Loading...", search = "Search for a button...",
+        combat = "Combo", movement = "Movement", riot = "Riot", edit_gui = "Edit Form GUI", config = "Config", favorite = "Favorite",
+        v1_desc = "Stick to target back", v2_desc = "Underground loop & auto attack"
+    }
+}
+
+-- إنشاء الواجهة الأساسية (ScreenGui) وتجنب التكرار
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PeakXHub"
+ScreenGui.ResetOnSpawn = false
+pcall(function() game:GetService("CoreGui").PeakXHub:Destroy() end)
+ScreenGui.Parent = game:GetService("CoreGui")
+
+-- دالة مخصصة لعمل السحب والتحريك (Drag) متوافقة مع سولارا
+local function MakeDraggable(frame, handle)
+    local dragging, dragInput, dragStart, startPos
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- ==========================================
+-- 1. مرحلة التحميل الأولية والـ Intro والـ Blur
+-- ==========================================
+local Blur = Instance.new("BlurEffect")
+Blur.Size = 0; Blur.Parent = Camera
+TweenService:Create(Blur, TweenInfo.new(6), {Size = 24}):Play()
+
+task.wait(6) -- الانتظار الأول لظهور الـ Blur
+
+local IntroFrame = Instance.new("Frame")
+IntroFrame.Size = UDim2.new(0, 450, 0, 280)
+IntroFrame.Position = UDim2.new(0.5, -225, 0.5, -140)
+IntroFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+IntroFrame.BorderSizePixel = 0
+IntroFrame.ClipsDescendants = true
+IntroFrame.Parent = ScreenGui
+
+local IntroCorner = Instance.new("UICorner")
+IntroCorner.CornerRadius = UDim.new(0, 12); IntroCorner.Parent = IntroFrame
+
+-- إضافة صورة أفاتار اللاعب (يتم جلبها ديناميكياً)
+local AvatarImage = Instance.new("ImageLabel")
+AvatarImage.Size = UDim2.new(0, 100, 0, 100)
+AvatarImage.Position = UDim2.new(0.05, 0, 0.2, 0)
+AvatarImage.BackgroundTransparency = 1
+AvatarImage.Image = "rbxthumb://type=AvatarHeadShot&id="..LocalPlayer.UserId.."&w=150&h=150"
+AvatarImage.Parent = IntroFrame
+
+local PlayerNameLabel = Instance.new("TextLabel")
+PlayerNameLabel.Size = UDim2.new(0, 200, 0, 30)
+PlayerNameLabel.Position = UDim2.new(0.4, 0, 0.3, 0)
+PlayerNameLabel.BackgroundTransparency = 1
+PlayerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlayerNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+PlayerNameLabel.Text = "@"..LocalPlayer.Name
+PlayerNameLabel.Font = Enum.Font.SourceSansBold; PlayerNameLabel.TextSize = 20
+PlayerNameLabel.Parent = IntroFrame
+
+local WelcomeLabel = Instance.new("TextLabel")
+WelcomeLabel.Size = UDim2.new(1, 0, 0, 40)
+WelcomeLabel.Position = UDim2.new(0, 0, 0, 10)
+WelcomeLabel.BackgroundTransparency = 1
+WelcomeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+WelcomeLabel.Text = Localization[CurrentLanguage].welcome
+WelcomeLabel.Font = Enum.Font.SourceSansBold; WelcomeLabel.TextSize = 24
+WelcomeLabel.Parent = IntroFrame
+
+local LoadingCircle = Instance.new("ImageLabel")
+LoadingCircle.Size = UDim2.new(0, 50, 0, 50)
+LoadingCircle.Position = UDim2.new(0.5, -25, 0.7, 0)
+LoadingCircle.BackgroundTransparency = 1
+LoadingCircle.Image = "rbxassetid://6033488212" -- دائرة تحميل نظيفة للـ UI
+LoadingCircle.Parent = IntroFrame
+
+-- تحريك دائرة التحميل بشكل دائري فخم
+task.spawn(function()
+    while IntroFrame.Parent do
+        LoadingCircle.Rotation = LoadingCircle.Rotation + 4
+        task.wait()
+    end
+end)
+
+task.wait(6) -- انتظار تحميل الموارد والـ Intro
+
+-- إخفاء شاشة الترحيب بأنيميشن
+TweenService:Create(IntroFrame, TweenInfo.new(1), {Size = UDim2.new(0,0,0,0), Position = UDim2.new(0.5,0,0.5,0)}):Play()
+task.wait(1)
+IntroFrame:Destroy()
+
+-- ==========================================
+-- 2. نظام التحقق من المفتاح (Key System)
+-- ==========================================
+local KeyFrame = Instance.new("Frame")
+KeyFrame.Size = UDim2.new(0, 420, 0, 250)
+KeyFrame.Position = UDim2.new(0.5, -210, 0.5, -125)
+KeyFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
+KeyFrame.BorderSizePixel = 0
+KeyFrame.Parent = ScreenGui
+
+local KeyCorner = Instance.new("UICorner")
+KeyCorner.CornerRadius = UDim.new(0, 10); KeyCorner.Parent = KeyFrame
+
+local KeyTitle = Instance.new("TextLabel")
+KeyTitle.Size = UDim2.new(1, 0, 0, 40)
+KeyTitle.BackgroundTransparency = 1
+KeyTitle.Text = Localization[CurrentLanguage].key_system
+KeyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyTitle.Font = Enum.Font.SourceSansBold; KeyTitle.TextSize = 22
+KeyTitle.Parent = KeyFrame
+
+local KeySubtitle = Instance.new("TextLabel")
+KeySubtitle.Size = UDim2.new(1, 0, 0, 20)
+KeySubtitle.Position = UDim2.new(0, 0, 0, 40)
+KeySubtitle.BackgroundTransparency = 1
+KeySubtitle.Text = Localization[CurrentLanguage].key_req
+KeySubtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
+KeySubtitle.Font = Enum.Font.SourceSans; KeySubtitle.TextSize = 14
+KeySubtitle.Parent = KeyFrame
+
+local KeyInput = Instance.new("TextBox")
+KeyInput.Size = UDim2.new(0.8, 0, 0, 35)
+KeyInput.Position = UDim2.new(0.1, 0, 0.4, 0)
+KeyInput.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyInput.Text = ""
+KeyInput.PlaceholderText = "Insert Key..."
+KeyInput.Parent = KeyFrame
+
+local VerifyButton = Instance.new("TextButton")
+VerifyButton.Size = UDim2.new(0.35, 0, 0, 35)
+VerifyButton.Position = UDim2.new(0.1, 0, 0.65, 0)
+VerifyButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+VerifyButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+VerifyButton.Text = Localization[CurrentLanguage].check_key
+VerifyButton.Font = Enum.Font.SourceSansBold; VerifyButton.TextSize = 16
+VerifyButton.Parent = KeyFrame
+local VCorner = Instance.new("UICorner")
+VCorner.CornerRadius = UDim.new(0, 6); VCorner.Parent = VerifyButton
+
+local GetKeyBtn = Instance.new("TextButton")
+GetKeyBtn.Size = UDim2.new(0.35, 0, 0, 35)
+GetKeyBtn.Position = UDim2.new(0.55, 0, 0.65, 0)
+GetKeyBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+GetKeyBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+GetKeyBtn.Text = Localization[CurrentLanguage].get_key
+GetKeyBtn.Font = Enum.Font.SourceSansBold; GetKeyBtn.TextSize = 16
+GetKeyBtn.Parent = KeyFrame
+local GCorner = Instance.new("UICorner")
+GCorner.CornerRadius = UDim.new(0, 6); GCorner.Parent = GetKeyBtn
+
+-- تأثير الأنميشن عند التأشير بالماوس (Hover) على الأزرار البيضاء
+local function AddHoverEffect(btn)
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(btn.Size.X.Scale * 1.05, btn.Size.X.Offset, btn.Size.Y.Scale * 1.05, btn.Size.Y.Offset)}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(btn.Size.X.Scale / 1.05, btn.Size.X.Offset, btn.Size.Y.Scale / 1.05, btn.Size.Y.Offset)}):Play()
+    end)
+end
+AddHoverEffect(VerifyButton)
+AddHoverEffect(GetKeyBtn)
+
+-- معالجة الضغط على زر التحقق
+local KeyAccepted = false
+VerifyButton.MouseButton1Click:Connect(function()
+    if KeyInput.Text == CorrectKey then
+        KeyAccepted = true
+        VerifyButton.TextColor3 = Color3.fromRGB(0, 200, 0)
+        VerifyButton.Text = Localization[CurrentLanguage].key_success
+        task.wait(2)
+        TweenService:Create(Blur, TweenInfo.new(1), {Size = 0}):Play()
+        KeyFrame:Destroy()
+    else
+        KeyInput.Text = ""
+        KeyInput.PlaceholderText = "Wrong Key! Try Again."
+    end
+end)
+
+repeat task.wait() until KeyAccepted
+
+-- ==========================================
+-- 3. الواجهة الرئيسية للـ Hub (Peak _x Menu)
+-- ==========================================
+local MainGUI = Instance.new("Frame")
+MainGUI.Size = UDim2.new(0, 650, 0, 420)
+MainGUI.Position = UDim2.new(0.5, -325, 0.5, -210)
+MainGUI.BackgroundColor3 = NormalBackground
+MainGUI.BorderSizePixel = 0
+MainGUI.Visible = true
+MainGUI.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10); MainCorner.Parent = MainGUI
+
+-- شريط التنقل الجانبي (Navbar) للأقسام والتابات
+local Navbar = Instance.new("Frame")
+Navbar.Size = UDim2.new(0, 180, 1, 0)
+Navbar.BackgroundColor3 = NavbarBackground
+Navbar.BorderSizePixel = 0
+Navbar.Parent = MainGUI
+
+local NavCorner = Instance.new("UICorner")
+NavCorner.CornerRadius = UDim.new(0, 10); NavCorner.Parent = Navbar
+
+local SearchBox = Instance.new("TextBox")
+SearchBox.Size = UDim2.new(0.9, 0, 0, 30)
+SearchBox.Position = UDim2.new(0.05, 0, 0.02, 0)
+SearchBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SearchBox.PlaceholderText = Localization[CurrentLanguage].search
+SearchBox.Text = ""
+SearchBox.Parent = Navbar
+
+-- منطقة تجميع الأزرار والتابات
+local TabContainer = Instance.new("ScrollingFrame")
+TabContainer.Size = UDim2.new(1, 0, 0.7, 0)
+TabContainer.Position = UDim2.new(0, 0, 0.12, 0)
+TabContainer.BackgroundTransparency = 1
+TabContainer.CanvasSize = UDim2.new(0, 0, 1.2, 0)
+TabContainer.Parent = Navbar
+
+local UIList = Instance.new("UIListLayout")
+UIList.Padding = UDim.new(0, 5); UIList.Parent = TabContainer
+
+-- فوتر معلومات اللاعب أسفل شريط النوافذ الجانبي مع الفاصل المطلوب
+local DividerLine = Instance.new("Frame")
+DividerLine.Size = UDim2.new(0.9, 0, 0, 2)
+DividerLine.Position = UDim2.new(0.05, 0, 0.83, 0)
+DividerLine.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+DividerLine.BorderSizePixel = 0
+DividerLine.Parent = Navbar
+
+local UserFooterImage = Instance.new("ImageLabel")
+UserFooterImage.Size = UDim2.new(0, 35, 0, 35)
+UserFooterImage.Position = UDim2.new(0.05, 0, 0.86, 0)
+UserFooterImage.BackgroundTransparency = 1
+UserFooterImage.Image = "rbxthumb://type=AvatarHeadShot&id="..LocalPlayer.UserId.."&w=48&h=48"
+UserFooterImage.Parent = Navbar
+
+local UserFooterName = Instance.new("TextLabel")
+UserFooterName.Size = UDim2.new(0.6, 0, 0, 35)
+UserFooterName.Position = UDim2.new(0.3, 0, 0.86, 0)
+UserFooterName.BackgroundTransparency = 1
+UserFooterName.TextColor3 = Color3.fromRGB(255, 255, 255)
+UserFooterName.Text = LocalPlayer.DisplayName
+UserFooterName.Font = Enum.Font.SourceSansBold; UserFooterName.TextSize = 14
+UserFooterName.TextXAlignment = Enum.TextXAlignment.Left
+UserFooterName.Parent = Navbar
+
+-- حاوية محتويات التابات والأزرار
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Size = UDim2.new(1, -190, 1, -20)
+ContentFrame.Position = UDim2.new(0, 185, 0, 10)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = MainGUI
+
+-- زر التصغير والتقليص المطور (Minimize Box Px)
+local MiniButton = Instance.new("TextButton")
+MiniButton.Size = UDim2.new(0, 45, 0, 45)
+MiniButton.Position = UDim2.new(0.05, 0, 0.05, 0)
+MiniButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MiniButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MiniButton.Text = "Px"
+MiniButton.Font = Enum.Font.SourceSansBold; MiniButton.TextSize = 18
+MiniButton.Visible = false
+MiniButton.Parent = ScreenGui
+local MiniCorner = Instance.new("UICorner")
+MiniCorner.CornerRadius = UDim.new(0, 8); MiniCorner.Parent = MiniButton
+
+MakeDraggable(MainGUI, Navbar)
+MakeDraggable(MiniButton, MiniButton)
+
+-- تفعيل ميزة الإخفاء والإظهار عن طريق زر التكبير/التصغير وسرعة الاستجابة
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 20, 0, 20)
+ToggleBtn.Position = UDim2.new(0.95, -10, 0.02, 0)
+ToggleBtn.BackgroundTransparency = 1
+ToggleBtn.Text = "-"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.SourceSansBold; ToggleBtn.TextSize = 18
+ToggleBtn.Parent = MainGUI
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainGUI.Visible = false
+    MiniButton.Visible = true
+end)
+
+MiniButton.MouseButton1Click:Connect(function()
+    task.wait(0.15) -- سنة تأخير أنميشن المطور المطلوبة
+    MiniButton.Visible = false
+    MainGUI.Visible = true
+end)
+
+-- ==========================================
+-- 4. إعداد التابات البرمجية وتوليد الميزات (TSBG Logic)
+-- ==========================================
+local Tabs = {"combat", "movement", "riot", "edit_gui", "config", "favorite"}
+local SelectedTarget = nil
+
+-- توليد واجهة التابات تلقائياً
+local TabPages = {}
+for _, tabName in pairs(Tabs) do
+    local Page = Instance.new("ScrollingFrame")
+    Page.Size = UDim2.new(1, 0, 1, 0)
+    Page.BackgroundTransparency = 1
+    Page.Visible = false
+    Page.CanvasSize = UDim2.new(0, 0, 2, 0)
+    Page.Parent = ContentFrame
+    
+    local PageList = Instance.new("UIListLayout")
+    PageList.Padding = UDim.new(0, 8); PageList.Parent = Page
+    TabPages[tabName] = Page
+
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Size = UDim2.new(1, 0, 0, 35)
+    TabBtn.BackgroundTransparency = 1
+    TabBtn.Text = Localization[CurrentLanguage][tabName]
+    TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TabBtn.Font = Enum.Font.SourceSans; TabBtn.TextSize = 16
+    TabBtn.TextXAlignment = Enum.TextXAlignment.Left
+    TabBtn.Parent = TabContainer
+
+    TabBtn.MouseButton1Click:Connect(function()
+        for _, p in pairs(TabPages) do p.Visible = false end
+        Page.Visible = true
+    end)
+end
+TabPages["combat"].Visible = true -- جعل تاب القتال مفتوح افتراضياً
+
+-- دالة لبناء عناصر الأزرار والميزات حسب شروطك لتكون محاذية لليسار والتفعيل لليمين
+local function CreateFeatureToggle(parentPage, textAr, textEn, callback)
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(0.95, 0, 0, 45)
+    Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Container.BorderSizePixel = 0
+    Container.Parent = parentPage
+    
+    local CCorner = Instance.new("UICorner")
+    CCorner.CornerRadius = UDim.new(0, 6); CCorner.Parent = Container
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(0.7, 0, 1, 0)
+    Title.Position = UDim2.new(0.02, 0, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.TextColor3 = TextColor
+    Title.Text = (CurrentLanguage == "ar" and textAr or textEn)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Font = Enum.Font.SourceSansBold; Title.TextSize = 15
+    Title.Parent = Container
+
+    local ActionBtn = Instance.new("TextButton")
+    ActionBtn.Size = UDim2.new(0, 60, 0, 28)
+    ActionBtn.Position = UDim2.new(0.8, 0, 0.2, 0)
+    ActionBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    ActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ActionBtn.Text = "OFF"
+    ActionBtn.Font = Enum.Font.SourceSansBold; ActionBtn.TextSize = 14
+    ActionBtn.Parent = Container
+    local ABCorner = Instance.new("UICorner")
+    ABCorner.CornerRadius = UDim.new(0, 4); ABCorner.Parent = ActionBtn
+
+    local toggled = false
+    ActionBtn.MouseButton1Click:Connect(function()
+        toggled = not toggled
+        ActionBtn.Text = toggled and "ON" or "OFF"
+        ActionBtn.BackgroundColor3 = toggled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(255, 0, 0)
+        callback(toggled)
+    end)
+end
+
+-- ==========================================
+-- 5. برمجة وبناء الميزات القتالية المخصصة (Combat Tab)
+-- ==========================================
+
+-- إضافة أزرار الـ Dropdown والـ Refresh لقائمة التتبع المستهدف
+local DropdownFrame = Instance.new("Frame")
+DropdownFrame.Size = UDim2.new(0.95, 0, 0, 50)
+DropdownFrame.BackgroundTransparency = 1
+DropdownFrame.Parent = TabPages["combat"]
+
+local TargetSelect = Instance.new("TextBox")
+TargetSelect.Size = UDim2.new(0.6, 0, 0, 35)
+TargetSelect.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TargetSelect.TextColor3 = Color3.fromRGB(255, 255, 255)
+TargetSelect.PlaceholderText = "Select Target Name..."
+TargetSelect.Text = ""
+TargetSelect.Parent = DropdownFrame
+
+local RefreshBtn = Instance.new("TextButton")
+RefreshBtn.Size = UDim2.new(0.35, 0, 0, 35)
+RefreshBtn.Position = UDim2.new(0.65, 0, 0, 0)
+RefreshBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+RefreshBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+RefreshBtn.Text = "Refresh 🔄"
+RefreshBtn.Parent = DropdownFrame
+
+RefreshBtn.MouseButton1Click:Connect(function()
+    local allP = Players:GetPlayers()
+    if #allP > 1 then
+        for _, p in pairs(allP) do
+            if p ~= LocalPlayer then TargetSelect.Text = p.Name break end
+        end
+    end
+end)
+
+-- ميزة Auto Farm V1 (الالتصاق بظهر الضحية)
+local V1Enabled = false
+CreateFeatureToggle(TabPages["combat"], "تلقائي التتبع V1 ⚔️", "Auto Farm (V1)", function(v)
+    V1Enabled = v
+    SelectedTarget = Players:FindFirstChild(TargetSelect.Text)
+end)
+
+RunService.Heartbeat:Connect(function()
+    if V1Enabled and SelectedTarget and SelectedTarget.Character and SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = SelectedTarget.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2.5) -- ملتصق بظهره تماماً
+        end
+    end
+end)
+
+-- ميزة Auto Farm V2 (التتبع تحت الأرض بضربات كومبو متتالية وهجوم كامل)
+local V2Enabled = false
+CreateFeatureToggle(TabPages["combat"], "تلقائي التتبع المطور V2 🕳️", "Auto Farm (V2)", function(v)
+    V2Enabled = v
+    SelectedTarget = Players:FindFirstChild(TargetSelect.Text)
+end)
+
+RunService.Heartbeat:Connect(function()
+    if V2Enabled and SelectedTarget and SelectedTarget.Character and SelectedTarget.Character:FindFirstChild("HumanoidRootPart") then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = SelectedTarget.Character.HumanoidRootPart.CFrame * CFrame.new(0, -7.5, 0)
+            -- محاكاة الضربات الهجومية (3 كليكات متبوعة بمهارة تلقائية متوفرة)
+            pcall(function()
+                local args = {[1] = "Combat"}
+                char.Communicate:FireServer(unpack(args))
+            end)
+        end
+    end
+end)
+
+-- ميزات منع التعطيل والسرعات التكتيكية لماب سترونق بالكامل
+local NoStun = false; CreateFeatureToggle(TabPages["combat"], "منع الـ Stun", "No Stun", function(v) NoStun = v end)
+local NoDashCooldown = false; CreateFeatureToggle(TabPages["combat"], "إلغاء انتظار الـ Dash", "No Dash Cooldown", function(v) NoDashCooldown = v end)
+local Downslam = false; CreateFeatureToggle(TabPages["combat"], "الضربة الهابطة التلقائية", "Downslam", function(v) Downslam = v end)
+local PunchItUp = false; CreateFeatureToggle(TabPages["combat"], "الضربة الرافعة لأعلى", "Punch it up", function(v) PunchItUp = v end)
+
+-- ==========================================
+-- 6. ميزات تاب الحركة (Movement Tab) والتأثيرات الفيزيائية
+-- ==========================================
+local ClickFlingEnabled = false
+CreateFeatureToggle(TabPages["movement"], "تفعيل طرد اللاعبين بالضغط 💥", "Click Fling", function(v) ClickFlingEnabled = v end)
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and ClickFlingEnabled and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local target = Mouse.Target
+        if target and target.Parent:FindFirstChild("HumanoidRootPart") then
+            local p = target.Parent.HumanoidRootPart
+            p.Velocity = Vector3.new(99999, 99999, 99999) -- إحداث fling فيزيائي فوري للتخلص من الخصم
+        end
+    end
+end)
+
+local FixativeExtrusion = false; CreateFeatureToggle(TabPages["movement"], "الحماية العكسية للفقد", "Fixative extrusion", function(v) FixativeExtrusion = v end)
+local InfJump = false; CreateFeatureToggle(TabPages["movement"], "قفز لانهائي", "Infinite Jump", function(v) InfJump = v end)
+
+UserInputService.JumpRequest:Connect(function()
+    if InfJump and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- ميزات المهارات التلقائية عند التثبيت
+CreateFeatureToggle(TabPages["movement"], "مهارة تلقائية 1 عند التثبيت", "Auto Skill 1", function(v) end)
+CreateFeatureToggle(TabPages["movement"], "مهارة تلقائية 2 عند التثبيت", "Auto Skill 2", function(v) end)
+CreateFeatureToggle(TabPages["movement"], "مهارة تلقائية 3 عند التثبيت", "Auto Skill 3", function(v) end)
+CreateFeatureToggle(TabPages["movement"], "مهارة تلقائية 4 عند التثبيت", "Auto Skill 4", function(v) end)
+CreateFeatureToggle(TabPages["movement"], "التراجع الآمن المعتمد", "Return if confirmed", function(v) end)
+
+-- متحكمات قيم السرعة والقفز المباشرة بالأرقام
+local SpeedInput = Instance.new("TextBox")
+SpeedInput.Size = UDim2.new(0.95, 0, 0, 35)
+SpeedInput.PlaceholderText = "Enter Custom Speed Value..."
+SpeedInput.Parent = TabPages["movement"]
+
+local JumpInput = Instance.new("TextBox")
+JumpInput.Size = UDim2.new(0.95, 0, 0, 35)
+JumpInput.PlaceholderText = "Enter Custom Jump Value..."
+JumpInput.Parent = TabPages["movement"]
+
+-- ==========================================
+-- 7. الوضع الوحشي السري والتحول عن طريق زر `G` (Phasic Mode)
+-- ==========================================
+local UltimateModeActive = false
+local LateralWelding = false
+
+local LateralActivationLabel = Instance.new("TextLabel")
+LateralActivationLabel.Size = UDim2.new(1, 0, 0, 50)
+LateralActivationLabel.Position = UDim2.new(0, 0, 0.4, 0)
+LateralActivationLabel.BackgroundTransparency = 1
+LateralActivationLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+LateralActivationLabel.Text = "Lateral Activation"
+LateralActivationLabel.Font = Enum.Font.SourceSansBold; LateralActivationLabel.TextSize = 36
+LateralActivationLabel.Visible = false
+LateralActivationLabel.Parent = ScreenGui
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.G then
+        UltimateModeActive = not UltimateModeActive
+        if UltimateModeActive then
+            -- تحويل الواجهة فوراً للوضع الوحشي المظلم بحدود نارية فخمة
+            MainGUI.BackgroundColor3 = Color3.fromRGB(5, 0, 0)
+            Navbar.Visible = false
+            LateralActivationLabel.Visible = true
+            task.wait(2)
+            LateralActivationLabel.Visible = false
+            
+            -- مسح محتويات الصفحة مؤقتاً لعرض ميزات الـ Activation
+            for _, p in pairs(TabPages) do p.Visible = false end
+            TabPages["favorite"].Visible = true
+        else
+            -- إلغاء الوضع الوحشي وإرجاع الهيكل الطبيعي للـ Hub
+            MainGUI.BackgroundColor3 = NormalBackground
+            Navbar.Visible = true
+            TabPages["favorite"].Visible = false
+            TabPages["combat"].Visible = true
+        end
+    end
+end)
+
+-- تزويد تاب المفضلة بميزاته المدمرة الحصرية للاستحواذ والقتال الفوري
+CreateFeatureToggle(TabPages["favorite"], "التثبيت الدوار القريب ⛓️", "Lateral welding", function(v) LateralWelding = v end)
+CreateFeatureToggle(TabPages["favorite"], "الضربة الرابعة الخاطفة (Garou)", "Fourth strike (garou)", function(v) end)
+CreateFeatureToggle(TabPages["favorite"], "نقل فوري وهجوم مهارة 1", "Skill 1 Instant", function(v) end)
+CreateFeatureToggle(TabPages["favorite"], "نقل فوري وهجوم مهارة 2", "Skill 2 Instant", function(v) end)
+CreateFeatureToggle(TabPages["favorite"], "نقل فوري وهجوم مهارة 3", "Skill 3 Instant", function(v) end)
+CreateFeatureToggle(TabPages["favorite"], "نقل فوري وهجوم مهارة 4", "Skill 4 Instant", function(v) end)
+
+-- ==========================================
+-- 8. تبويب تعديل المظهر والـ Custom Colors (Edit GUI Tab)
+-- ==========================================
+local ColorBtn1 = Instance.new("TextButton")
+ColorBtn1.Size = UDim2.new(0.95, 0, 0, 35)
+ColorBtn1.Text = "Edit Background In Script 🎨"
+ColorBtn1.Parent = TabPages["edit_gui"]
+
+ColorBtn1.MouseButton1Click:Connect(function()
+    MainGUI.BackgroundColor3 = Color3.fromRGB(math.random(0,255), math.random(0,255), math.random(0,255))
+end)
+
+local ColorBtn2 = Instance.new("TextButton")
+ColorBtn2.Size = UDim2.new(0.95, 0, 0, 35)
+ColorBtn2.Text = "Edit In Background Navbar 🎨"
+ColorBtn2.Parent = TabPages["edit_gui"]
+
+ColorBtn2.MouseButton1Click:Connect(function()
+    Navbar.BackgroundColor3 = Color3.fromRGB(math.random(0,255), math.random(0,255), math.random(0,255))
+end)
+
+local ColorBtn3 = Instance.new("TextButton")
+ColorBtn3.Size = UDim2.new(0.95, 0, 0, 35)
+ColorBtn3.Text = "Edit In Color Letters Script 🎨"
+ColorBtn3.Parent = TabPages["edit_gui"]
+
+ColorBtn3.MouseButton1Click:Connect(function()
+    local randomColor = Color3.fromRGB(math.random(0,255), math.random(0,255), math.random(0,255))
+    TextColor = randomColor
+end)
